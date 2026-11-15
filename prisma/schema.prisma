@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  AUTHORIZED_WORKER
+  READ_ONLY
+}
+
+enum ApplicationStatus {
+  NEW
+  UNDER_REVIEW
+  DONE
+}
+
+enum DecisionResult {
+  APPROVED
+  REJECTED
+}
+
+enum AssignmentEndReason {
+  APPROVAL
+  REJECTION
+  RELEASE
+}
+
+enum AuditAction {
+  START_REVIEW
+  RELEASE_REVIEW
+  APPROVE
+  REJECT
+  ADD_GENERAL_COMMENT
+  DELETE_GENERAL_COMMENT
+}
+
+enum IdempotencyOperation {
+  START_REVIEW
+  APPROVE
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique @db.VarChar(100)
+  displayName  String   @db.VarChar(200)
+  passwordHash String   @db.VarChar(255)
+  role         UserRole
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  sessions            Session[]
+  currentApplications Application[]       @relation("CurrentReviewer")
+  assignments         ReviewAssignment[]  @relation("AssignmentReviewer")
+  decisions           Decision[]          @relation("DecidingWorker")
+  comments            GeneralComment[]    @relation("CommentAuthor")
+  deletedComments     GeneralComment[]    @relation("CommentDeletedBy")
+  auditEvents         AuditEvent[]        @relation("AuditActor")
+  idempotencyRecords  IdempotencyRecord[]
+}
+
+model Session {
+  id             String    @id @default(uuid()) @db.Uuid
+  tokenHash      String    @unique @db.Char(64)
+  userId         String    @db.Uuid
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  lastActivityAt DateTime  @default(now()) @db.Timestamptz(3)
+  idleExpiresAt  DateTime  @db.Timestamptz(3)
+  revokedAt      DateTime? @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([idleExpiresAt])
+}
+
+model SourceApplication {
+  id                 String   @id @default(uuid()) @db.Uuid
+  externalIdentifier String   @unique @db.VarChar(100)
+  data               Json
+  sourceUpdatedAt    DateTime @db.Timestamptz(3)
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @db.Timestamptz(3)
+
+  application Application?
+}
+
+model Application {
+  id                       String            @id @default(uuid()) @db.Uuid
+  sourceIdentifier         String            @unique @db.VarChar(100)
+  status                   ApplicationStatus @default(NEW)
+  currentReviewerId        String?           @db.Uuid
+  result                   DecisionResult?
+  sourceLastSynchronizedAt DateTime          @db.Timestamptz(3)
+  createdAt                DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime          @updatedAt @db.Timestamptz(3)
+
+  source             SourceApplication   @relation(fields: [sourceIdentifier], references: [externalIdentifier], onDelete: Restrict, onUpdate: Cascade)
+  currentReviewer    User?               @relation("CurrentReviewer", fields: [currentReviewerId], references: [id], onDelete: Restrict)
+  snapshots          ReviewSnapshot[]
+  assignments        ReviewAssignment[]
+  decision           Decision?
+  generalComments    GeneralComment[]
+  auditEvents        AuditEvent[]
+  idempotencyRecords IdempotencyRecord[]
+
+  @@index([status])
+  @@index([currentReviewerId])
+}
+
+model ReviewSnapshot {
+  id               String   @id @default(uuid()) @db.Uuid
+  applicationId    String   @db.Uuid
+  sourceIdentifier String   @db.VarChar(100)
+  sourceData       Json
+  schemaVersion    Int      @default(1)
+  retrievedAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  application Application       @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  assignment  ReviewAssignment?
+  decision    Decision?
+
+  @@index([applicationId])
+}
+
+model ReviewAssignment {
+  id            String               @id @default(uuid()) @db.Uuid
+  applicationId String               @db.Uuid
+  reviewerId    String               @db.Uuid
+  snapshotId    String               @unique @db.Uuid
+  startedAt     DateTime             @default(now()) @db.Timestamptz(3)
+  endedAt       DateTime?            @db.Timestamptz(3)
+  endReason     AssignmentEndReason?
+
+  application Application    @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  reviewer    User           @relation("AssignmentReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  snapshot    ReviewSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  decision    Decision?
+
+  @@index([applicationId])
+  @@index([reviewerId])
+}
+
+model Decision {
+  id               String         @id @default(uuid()) @db.Uuid
+  applicationId    String         @unique @db.Uuid
+  assignmentId     String         @unique @db.Uuid
+  snapshotId       String         @unique @db.Uuid
+  decidingWorkerId String         @db.Uuid
+  result           DecisionResult
+  comment          String         @db.VarChar(2000)
+  decidedAt        DateTime       @default(now()) @db.Timestamptz(3)
+
+  application    Application      @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  assignment     ReviewAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  snapshot       ReviewSnapshot   @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  decidingWorker User             @relation("DecidingWorker", fields: [decidingWorkerId], references: [id], onDelete: Restrict)
+
+  @@index([decidingWorkerId])
+}
+
+model GeneralComment {
+  id            String    @id @default(uuid()) @db.Uuid
+  applicationId String    @db.Uuid
+  authorId      String    @db.Uuid
+  text          String    @db.Text
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  deletedAt     DateTime? @db.Timestamptz(3)
+  deletedById   String?   @db.Uuid
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  author      User        @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  deletedBy   User?       @relation("CommentDeletedBy", fields: [deletedById], references: [id], onDelete: Restrict)
+
+  @@index([applicationId, createdAt])
+  @@index([authorId])
+}
+
+model AuditEvent {
+  id            String      @id @default(uuid()) @db.Uuid
+  applicationId String      @db.Uuid
+  actorId       String      @db.Uuid
+  action        AuditAction
+  details       Json
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  actor       User        @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId, createdAt])
+  @@index([actorId])
+}
+
+model IdempotencyRecord {
+  id             String               @id @default(uuid()) @db.Uuid
+  key            String               @db.VarChar(100)
+  operation      IdempotencyOperation
+  userId         String               @db.Uuid
+  applicationId  String               @db.Uuid
+  requestHash    String               @db.Char(64)
+  responseStatus Int?
+  responseBody   Json?
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, operation, key])
+  @@index([applicationId])
+}

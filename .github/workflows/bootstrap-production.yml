@@ -1,0 +1,30 @@
+name: Bootstrap production data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_DIRECT_URL }}
+      BOOTSTRAP_PRODUCTION_CONFIRM: I_UNDERSTAND_THIS_WRITES_PRODUCTION_DATA
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: npm ci
+      - name: Write protected bootstrap input
+        shell: bash
+        env:
+          BOOTSTRAP_PAYLOAD_BASE64: ${{ secrets.PRODUCTION_BOOTSTRAP_PAYLOAD_BASE64 }}
+        run: printf '%s' "$BOOTSTRAP_PAYLOAD_BASE64" | base64 --decode > "$RUNNER_TEMP/bootstrap-production-input.json"
+      - name: Bootstrap production
+        run: npm run bootstrap:production -- "$RUNNER_TEMP/bootstrap-production-input.json"

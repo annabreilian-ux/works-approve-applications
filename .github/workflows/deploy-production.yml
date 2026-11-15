@@ -1,0 +1,63 @@
+name: Stage production deployment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5433/ci?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: npm ci
+      - run: npm run ci:verify
+
+  migrate:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: npm ci
+      - run: npm run db:migrate:deploy
+
+  stage:
+    needs: migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    outputs:
+      deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: npm ci
+      - run: npx --yes vercel@latest pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+      - id: deploy
+        shell: bash
+        run: |
+          deployment_url=$(npx --yes vercel@latest deploy --prod --skip-domain --yes --token="${{ secrets.VERCEL_TOKEN }}")
+          echo "deployment-url=$deployment_url" >> "$GITHUB_OUTPUT"
+          echo "Staged production deployment: $deployment_url"

@@ -1,0 +1,23 @@
+services:
+  postgres-e2e:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: works_approve_e2e
+      POSTGRES_PASSWORD: e2e_only_password
+      POSTGRES_DB: works_approve_e2e
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_e2e_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U works_approve_e2e -d works_approve_e2e",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  postgres_e2e_data:
