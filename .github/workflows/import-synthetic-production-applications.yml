@@ -1,0 +1,44 @@
+name: Import synthetic production applications
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_existing_application_count:
+        description: Expected application count before the import
+        required: true
+        default: "1"
+        type: string
+      base_date:
+        description: Planned-start base date in YYYY-MM-DD
+        required: true
+        default: "2026-11-16"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-data-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_DIRECT_URL }}
+      EXPECTED_EXISTING_APPLICATION_COUNT: ${{ inputs.expected_existing_application_count }}
+      SYNTHETIC_IMPORT_BASE_DATE: ${{ inputs.base_date }}
+      IMPORT_SYNTHETIC_PRODUCTION_CONFIRM: I_UNDERSTAND_THIS_ADDS_SYNTHETIC_PRODUCTION_APPLICATIONS
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: npm ci
+      - name: Validate synthetic import
+        run: npm run import:synthetic:production -- --dry-run
+      - name: Import synthetic applications
+        run: npm run import:synthetic:production
