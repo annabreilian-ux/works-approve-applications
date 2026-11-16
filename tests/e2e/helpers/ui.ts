@@ -5,7 +5,7 @@ import { demoPassword } from "./api";
 export async function signIn(page: Page, username: string): Promise<void> {
   await page.goto("/sign-in");
   await page.getByLabel("Username").fill(username);
-  await page.getByLabel("Password").fill(demoPassword);
+  await page.locator("#password").fill(demoPassword);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/applications$/);
   await expect(

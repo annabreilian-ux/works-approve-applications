@@ -22,6 +22,7 @@ export function SignInForm() {
   const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [usernameError, setUsernameError] = useState<string>();
   const [passwordError, setPasswordError] = useState<string>();
   const [formError, setFormError] = useState<string>();
@@ -91,7 +92,7 @@ export function SignInForm() {
         id="password"
         label="Password"
         name="password"
-        type="password"
+        type={showPassword ? "text" : "password"}
         autoComplete="current-password"
         required
         value={password}
@@ -104,6 +105,17 @@ export function SignInForm() {
         }}
       />
 
+      <div>
+        <input
+          id="show-password"
+          type="checkbox"
+          checked={showPassword}
+          disabled={isPending}
+          onChange={(event) => setShowPassword(event.target.checked)}
+        />
+        <label htmlFor="show-password">Show password</label>
+      </div>
+
       <Button className="w-full" type="submit" disabled={!canSubmit}>
         {isPending ? (
           <LoaderCircle className="animate-spin" aria-hidden="true" />
@@ -111,12 +123,10 @@ export function SignInForm() {
         {isPending ? "Signing in" : "Sign in"}
       </Button>
 
-      {process.env.NODE_ENV === "development" ? (
-        <p className="text-xs text-muted-foreground">
-          Demo usernames: anna.worker, michael.worker, or olivia.viewer. Demo
-          password: CouncilDemo2026!
-        </p>
-      ) : null}
+      <p className="text-xs text-muted-foreground">
+        Use anna.worker as the login and Jared7777---- as the password to sign
+        in.
+      </p>
     </form>
   );
 }

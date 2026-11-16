@@ -20,11 +20,29 @@ test.afterAll(async () => {
 
 test("sign-in validates required and incorrect credentials", async ({ page }) => {
   await page.goto("/sign-in");
+  await expect(
+    page.getByText(
+      "Use anna.worker as the login and Jared7777---- as the password to sign in.",
+      { exact: true },
+    ),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in" })).toBeDisabled();
   await page.getByLabel("Username").fill("anna.worker");
   await expect(page.getByRole("button", { name: "Sign in" })).toBeDisabled();
 
-  await page.getByLabel("Password").fill("incorrect-password");
+  const passwordInput = page.locator("#password");
+  const showPassword = page.getByRole("checkbox", {
+    name: "Show password",
+    exact: true,
+  });
+  await expect(passwordInput).toHaveAttribute("type", "password");
+  await passwordInput.fill("incorrect-password");
+  await showPassword.check();
+  await expect(passwordInput).toHaveAttribute("type", "text");
+  await expect(passwordInput).toHaveValue("incorrect-password");
+  await showPassword.uncheck();
+  await expect(passwordInput).toHaveAttribute("type", "password");
+  await expect(passwordInput).toHaveValue("incorrect-password");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByText("The username or password is incorrect.")).toBeVisible();
   await expect(page).toHaveURL(/\/sign-in/);
@@ -273,7 +291,7 @@ test("session expiry preserves ownership and restores application details", asyn
   });
 
   await page.getByLabel("Username").fill("anna.worker");
-  await page.getByLabel("Password").fill("CouncilDemo2026!");
+  await page.locator("#password").fill("CouncilDemo2026!");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/applications\/[0-9a-f-]+$/);
   await expect(
