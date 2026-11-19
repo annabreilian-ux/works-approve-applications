@@ -22,7 +22,7 @@ test("sign-in validates required and incorrect credentials", async ({ page }) =>
   await page.goto("/sign-in");
     await expect(
     page.getByText(
-      'Read-only user: password: "read.worker" as the login and "Reader7777----" as the password to sign in.',
+      'Read-only user: password: "reader.worker" as the login and "Reader7777----" as the password to sign in.',
       { exact: false },
     ),
   ).toBeVisible();
