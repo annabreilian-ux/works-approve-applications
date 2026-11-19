@@ -20,10 +20,16 @@ test.afterAll(async () => {
 
 test("sign-in validates required and incorrect credentials", async ({ page }) => {
   await page.goto("/sign-in");
+    await expect(
+    page.getByText(
+      'Read-only user: password: "read.worker" as the login and "Reader7777----" as the password to sign in.',
+      { exact: false },
+    ),
+  ).toBeVisible();
   await expect(
     page.getByText(
-      "Use anna.worker as the login and Jared7777---- as the password to sign in.",
-      { exact: true },
+      'Executer: "anna.worker" as the login and "Anna7777----" as the password.',
+      { exact: false },
     ),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in" })).toBeDisabled();
