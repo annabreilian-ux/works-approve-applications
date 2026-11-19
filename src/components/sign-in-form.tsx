@@ -125,7 +125,7 @@ export function SignInForm() {
       </Button>
 
       <p className="text-xs text-muted-foreground">
-        Read-only user: password: &quot;read.worker&quot; as the login and &quot;Reader7777----&quot; as the password to sign
+        Read-only user: password: &quot;reader.worker&quot; as the login and &quot;Reader7777----&quot; as the password to sign
         in.<br />
         Executer: &quot;anna.worker&quot; as the login and &quot;Anna7777----&quot; as the password.
       </p>
