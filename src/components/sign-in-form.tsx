@@ -105,7 +105,7 @@ export function SignInForm() {
         }}
       />
 
-      <div>
+      <div className="flex items-center gap-1">
         <input
           id="show-password"
           type="checkbox"
@@ -113,7 +113,8 @@ export function SignInForm() {
           disabled={isPending}
           onChange={(event) => setShowPassword(event.target.checked)}
         />
-        <label htmlFor="show-password">Show password</label>
+        {" "}
+        <label className="text-sm" htmlFor="show-password">Show password</label>
       </div>
 
       <Button className="w-full" type="submit" disabled={!canSubmit}>
@@ -124,8 +125,9 @@ export function SignInForm() {
       </Button>
 
       <p className="text-xs text-muted-foreground">
-        Use anna.worker as the login and Jared7777---- as the password to sign
-        in.
+        Read-only user: password: &quot;read.worker&quot; as the login and &quot;Reader7777----&quot; as the password to sign
+        in.<br />
+        Executer: &quot;anna.worker&quot; as the login and &quot;Anna7777----&quot; as the password.
       </p>
     </form>
   );
