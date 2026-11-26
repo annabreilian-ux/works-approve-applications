@@ -1,0 +1,3 @@
+[tool.pytest.ini_options]
+addopts = "--browser chromium"
+testpaths = ["tests_python"]
