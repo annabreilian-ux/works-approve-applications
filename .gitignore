@@ -23,6 +23,7 @@ __pycache__/
 # next.js
 /.next/
 /.next-e2e/
+/.next-python-e2e/
 /out/
 
 # production
