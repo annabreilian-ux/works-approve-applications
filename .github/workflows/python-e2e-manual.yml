@@ -7,7 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  sign-in:
+  python-e2e:
+    name: Python E2E suite
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
